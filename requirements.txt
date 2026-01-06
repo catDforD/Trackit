@@ -1,0 +1,33 @@
+# Core dependencies
+anthropic>=0.40.0              # Claude API
+python-dotenv>=1.0.0          # Environment variables
+
+# Database
+sqlalchemy>=2.0.0             # ORM (optional, can use raw SQLite)
+
+# Data Analysis
+pandas>=2.0.0                 # Time series analysis
+numpy>=1.24.0
+
+# Visualization
+matplotlib>=3.7.0             # Static plots
+plotly>=5.14.0                # Interactive plots
+
+# Web Interface
+gradio>=4.0.0                 # Chat UI
+
+# Validation
+jsonschema>=4.20.0            # JSON schema validation
+pydantic>=2.0.0               # Data validation
+
+# Testing
+pytest>=7.4.0                 # Testing framework
+pytest-cov>=4.1.0             # Coverage reporting
+
+# Utilities
+python-dateutil>=2.8.2        # Date parsing
+pytz>=2023.3                  # Timezone support
+
+# Optional: LangGraph for multi-agent (Week 4)
+# langgraph>=0.0.20
+# langchain>=0.1.0
