@@ -330,9 +330,9 @@ Trackit/
 ### 🎯 下一步计划
 
 **立即可做的任务**:
-1. 安装依赖: `pip install -r requirements.txt`
-2. 配置API密钥: 复制`.env.example`到`.env`并填入`ANTHROPIC_API_KEY`
-3. 测试RecordingAgent: `python -m src.agents.recording_agent`
+1. 安装依赖: `pip install -r requirements.txt` (已安装)
+2. 配置API密钥: 复制`.env.example`到`.env`并填入`ANTHROPIC_API_KEY` (已采用 openai 接口并正确配置)
+3. 测试RecordingAgent: `python -m src.agents.recording_agent` (已通过)
 
 **第1周后半部分** (Day 3-7):
 - Day 3-4: LLM集成测试

@@ -17,6 +17,7 @@ from ..utils.validators import (
     validate_entry_data,
     sanitize_note
 )
+from ..utils.cache import ExtractionCache
 
 
 class HabitExtractor:
@@ -38,20 +39,30 @@ class HabitExtractor:
         5.0
     """
 
-    def __init__(self, client: Optional[LLMClient] = None):
+    def __init__(
+        self,
+        client: Optional[LLMClient] = None,
+        use_cache: bool = True,
+        cache: Optional[ExtractionCache] = None
+    ):
         """
         Initialize the extractor.
 
         Args:
             client: LLM client instance (creates new one if not provided)
+            use_cache: Whether to use extraction cache
+            cache: Custom cache instance (creates default if not provided)
         """
         self.client = client or LLMClient()
         self.model = settings.MODEL_EXTRACTION
+        self.use_cache = use_cache
+        self.cache = cache or (ExtractionCache() if use_cache else None)
 
     def extract(
         self,
         user_input: str,
-        validate: bool = True
+        validate: bool = True,
+        use_cache: Optional[bool] = None
     ) -> Dict[str, Any]:
         """
         Extract structured data from user input.
@@ -59,6 +70,7 @@ class HabitExtractor:
         Args:
             user_input: Raw natural language input
             validate: Whether to validate the extracted data
+            use_cache: Override default cache setting
 
         Returns:
             Dictionary with extracted data:
@@ -69,12 +81,24 @@ class HabitExtractor:
                 - note: Additional notes
                 - is_valid: Validation result
                 - error: Error message if validation failed
+                - cached: Whether result came from cache
 
         Example:
             >>> result = extractor.extract("今天跑了5公里")
             >>> print(result["category"])
             '运动'
         """
+        # Determine whether to use cache
+        should_use_cache = use_cache if use_cache is not None else self.use_cache
+
+        # Check cache first
+        if should_use_cache and self.cache is not None:
+            cached_result = self.cache.get(user_input)
+            if cached_result is not None:
+                # Mark as cached and return
+                cached_result["cached"] = True
+                return cached_result
+
         try:
             # Generate prompt
             prompt = Prompts.get_extraction_prompt(user_input)
@@ -102,6 +126,15 @@ class HabitExtractor:
                 extracted_data["is_valid"] = True
                 extracted_data["error"] = None
 
+            # Store in cache (without cached flag)
+            if should_use_cache and self.cache is not None:
+                # Store clean copy without cached flag
+                cache_data = extracted_data.copy()
+                cache_data.pop("cached", None)
+                self.cache.store(user_input, cache_data)
+
+            # Mark as not cached for this return
+            extracted_data["cached"] = False
             return extracted_data
 
         except Exception as e:
@@ -112,13 +145,15 @@ class HabitExtractor:
                 "metrics": {},
                 "note": f"Extraction failed: {str(e)}",
                 "is_valid": False,
-                "error": str(e)
+                "error": str(e),
+                "cached": False
             }
 
     def batch_extract(
         self,
         inputs: List[str],
-        validate: bool = True
+        validate: bool = True,
+        show_progress: bool = False
     ) -> List[Dict[str, Any]]:
         """
         Extract from multiple inputs in batch.
@@ -126,15 +161,61 @@ class HabitExtractor:
         Args:
             inputs: List of user input strings
             validate: Whether to validate each extraction
+            show_progress: Whether to show progress (for batch operations)
 
         Returns:
-            List of extraction results
+            List of extraction results with batch metadata:
+                - results: List of extraction results
+                - summary: Batch statistics
+                    - total: Total number of inputs
+                    - cached: Number from cache
+                    - api_calls: Number of API calls made
+                    - cache_hit_rate: Cache hit rate (0-1)
         """
         results = []
-        for user_input in inputs:
+        cached_count = 0
+        api_calls = 0
+
+        for i, user_input in enumerate(inputs):
+            if show_progress and (i + 1) % 10 == 0:
+                print(f"Processing {i + 1}/{len(inputs)}...")
+
             result = self.extract(user_input, validate=validate)
             results.append(result)
-        return results
+
+            if result.get("cached"):
+                cached_count += 1
+            else:
+                api_calls += 1
+
+        # Calculate statistics
+        cache_hit_rate = cached_count / len(inputs) if inputs else 0
+
+        return {
+            "results": results,
+            "summary": {
+                "total": len(inputs),
+                "cached": cached_count,
+                "api_calls": api_calls,
+                "cache_hit_rate": cache_hit_rate
+            }
+        }
+
+    def get_cache_stats(self) -> Optional[Dict[str, Any]]:
+        """
+        Get cache statistics.
+
+        Returns:
+            Cache statistics dictionary or None if cache not enabled
+        """
+        if self.cache:
+            return self.cache.get_stats()
+        return None
+
+    def clear_cache(self) -> None:
+        """Clear the extraction cache."""
+        if self.cache:
+            self.cache.clear()
 
     def extract_with_retry(
         self,

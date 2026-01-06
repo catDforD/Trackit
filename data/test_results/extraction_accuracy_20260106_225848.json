@@ -1,0 +1,566 @@
+{
+  "timestamp": "2026-01-06T22:58:48.680031",
+  "model": "gpt-4o-mini",
+  "provider": "openai",
+  "stats": {
+    "total": 23,
+    "passed": 21,
+    "failed": 2,
+    "category_accuracy": {
+      "exercise": 100.0,
+      "study": 50.0,
+      "sleep": 100.0,
+      "mood": 100.0,
+      "diet": 100.0,
+      "complex": 100.0,
+      "edge_case": 100.0
+    },
+    "mood_accuracy": 100.0,
+    "metrics_accuracy": 91.30434782608695
+  },
+  "results": [
+    {
+      "input": "今天跑了5公里，感觉不错",
+      "expected": {
+        "category": "运动",
+        "mood": "positive",
+        "metrics": {
+          "distance_km": 5.0
+        }
+      },
+      "extracted": {
+        "category": "运动",
+        "mood": "positive",
+        "metrics": {
+          "distance_km": 5.0
+        },
+        "note": null,
+        "raw_input": "今天跑了5公里，感觉不错",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "exercise",
+      "description": "Simple running with distance"
+    },
+    {
+      "input": "健身房练了1个小时，举铁",
+      "expected": {
+        "category": "运动",
+        "mood": "neutral",
+        "metrics": {
+          "duration_min": 60
+        }
+      },
+      "extracted": {
+        "category": "运动",
+        "mood": "neutral",
+        "metrics": {
+          "duration_min": 60
+        },
+        "note": null,
+        "raw_input": "健身房练了1个小时，举铁",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "exercise",
+      "description": "Gym workout with duration"
+    },
+    {
+      "input": "打了30分钟篮球",
+      "expected": {
+        "category": "运动",
+        "mood": "neutral",
+        "metrics": {
+          "duration_min": 30
+        }
+      },
+      "extracted": {
+        "category": "运动",
+        "mood": "neutral",
+        "metrics": {
+          "duration_min": 30
+        },
+        "note": null,
+        "raw_input": "打了30分钟篮球",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "exercise",
+      "description": "Sports with duration"
+    },
+    {
+      "input": "今天游泳1500米，太累了",
+      "expected": {
+        "category": "运动",
+        "mood": "negative",
+        "metrics": {
+          "distance_m": 1500
+        }
+      },
+      "extracted": {
+        "category": "运动",
+        "mood": "negative",
+        "metrics": {
+          "distance_m": 1500
+        },
+        "note": null,
+        "raw_input": "今天游泳1500米，太累了",
+        "is_valid": false,
+        "error": "Invalid metric for 运动: distance_m"
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "exercise",
+      "description": "Swimming with negative mood"
+    },
+    {
+      "input": "骑行20公里",
+      "expected": {
+        "category": "运动",
+        "mood": "neutral",
+        "metrics": {
+          "distance_km": 20
+        }
+      },
+      "extracted": {
+        "category": "运动",
+        "mood": "neutral",
+        "metrics": {
+          "distance_km": 20.0
+        },
+        "note": null,
+        "raw_input": "骑行20公里",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "exercise",
+      "description": "Cycling with distance"
+    },
+    {
+      "input": "今天读了50页书",
+      "expected": {
+        "category": "学习",
+        "mood": "neutral",
+        "metrics": {
+          "pages": 50
+        }
+      },
+      "extracted": {
+        "category": "学习",
+        "mood": "neutral",
+        "metrics": {
+          "pages": 50
+        },
+        "note": null,
+        "raw_input": "今天读了50页书",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "study",
+      "description": "Reading with page count"
+    },
+    {
+      "input": "学习了2小时Python",
+      "expected": {
+        "category": "学习",
+        "mood": "neutral",
+        "metrics": {
+          "duration_min": 120,
+          "subject": "Python"
+        }
+      },
+      "extracted": {
+        "category": "学习",
+        "mood": "neutral",
+        "metrics": {
+          "duration_hr": 2
+        },
+        "note": null,
+        "raw_input": "学习了2小时Python",
+        "is_valid": false,
+        "error": "Invalid metric for 学习: duration_hr"
+      },
+      "passed": false,
+      "discrepancies": [
+        "Metrics: missing key 'duration_min'",
+        "Metrics: missing key 'subject'"
+      ],
+      "category": "study",
+      "description": "Study with duration and subject"
+    },
+    {
+      "input": "完成了一门在线课程，很有成就感",
+      "expected": {
+        "category": "学习",
+        "mood": "positive",
+        "metrics": {
+          "count": 1
+        }
+      },
+      "extracted": {
+        "category": "学习",
+        "mood": "positive",
+        "metrics": {},
+        "note": "很有成就感",
+        "raw_input": "完成了一门在线课程，很有成就感",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": false,
+      "discrepancies": [
+        "Metrics: missing key 'count'"
+      ],
+      "category": "study",
+      "description": "Course completion with achievement"
+    },
+    {
+      "input": "背了100个单词",
+      "expected": {
+        "category": "学习",
+        "mood": "neutral",
+        "metrics": {
+          "count": 100
+        }
+      },
+      "extracted": {
+        "category": "学习",
+        "mood": "neutral",
+        "metrics": {
+          "count": 100
+        },
+        "note": null,
+        "raw_input": "背了100个单词",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "study",
+      "description": "Vocabulary with count"
+    },
+    {
+      "input": "6点半起床，早起成功！",
+      "expected": {
+        "category": "睡眠",
+        "mood": "positive",
+        "metrics": {
+          "wake_time": "06:30"
+        }
+      },
+      "extracted": {
+        "category": "睡眠",
+        "mood": "positive",
+        "metrics": {
+          "wake_time": "06:30"
+        },
+        "note": "早起成功",
+        "raw_input": "6点半起床，早起成功！",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "sleep",
+      "description": "Early wake time"
+    },
+    {
+      "input": "昨晚只睡了5小时，好困",
+      "expected": {
+        "category": "睡眠",
+        "mood": "negative",
+        "metrics": {
+          "sleep_hours": 5
+        }
+      },
+      "extracted": {
+        "category": "睡眠",
+        "mood": "negative",
+        "metrics": {
+          "sleep_hours": 5.0
+        },
+        "note": null,
+        "raw_input": "昨晚只睡了5小时，好困",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "sleep",
+      "description": "Short sleep with negative mood"
+    },
+    {
+      "input": "睡了8个小时，精神饱满",
+      "expected": {
+        "category": "睡眠",
+        "mood": "positive",
+        "metrics": {
+          "sleep_hours": 8
+        }
+      },
+      "extracted": {
+        "category": "睡眠",
+        "mood": "positive",
+        "metrics": {
+          "sleep_hours": 8.0
+        },
+        "note": null,
+        "raw_input": "睡了8个小时，精神饱满",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "sleep",
+      "description": "Good sleep with positive mood"
+    },
+    {
+      "input": "9点才起，起晚了",
+      "expected": {
+        "category": "睡眠",
+        "mood": "negative",
+        "metrics": {
+          "wake_time": "09:00"
+        }
+      },
+      "extracted": {
+        "category": "睡眠",
+        "mood": "negative",
+        "metrics": {
+          "wake_time": "09:00"
+        },
+        "note": "起晚了",
+        "raw_input": "9点才起，起晚了",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "sleep",
+      "description": "Late wake time"
+    },
+    {
+      "input": "今天心情一般般",
+      "expected": {
+        "category": "情绪",
+        "mood": "neutral",
+        "metrics": {}
+      },
+      "extracted": {
+        "category": "情绪",
+        "mood": "neutral",
+        "metrics": {},
+        "note": null,
+        "raw_input": "今天心情一般般",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "mood",
+      "description": "Neutral mood"
+    },
+    {
+      "input": "今天超级开心，状态极佳",
+      "expected": {
+        "category": "情绪",
+        "mood": "positive",
+        "metrics": {}
+      },
+      "extracted": {
+        "category": "情绪",
+        "mood": "positive",
+        "metrics": {},
+        "note": null,
+        "raw_input": "今天超级开心，状态极佳",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "mood",
+      "description": "Very positive mood"
+    },
+    {
+      "input": "感觉很焦虑，压力很大",
+      "expected": {
+        "category": "情绪",
+        "mood": "negative",
+        "metrics": {}
+      },
+      "extracted": {
+        "category": "情绪",
+        "mood": "negative",
+        "metrics": {},
+        "note": "感觉很焦虑，压力很大",
+        "raw_input": "感觉很焦虑，压力很大",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "mood",
+      "description": "Anxious mood"
+    },
+    {
+      "input": "有点沮丧，但不至于太糟",
+      "expected": {
+        "category": "情绪",
+        "mood": "negative",
+        "metrics": {}
+      },
+      "extracted": {
+        "category": "情绪",
+        "mood": "negative",
+        "metrics": {},
+        "note": "有点沮丧",
+        "raw_input": "有点沮丧，但不至于太糟",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "mood",
+      "description": "Mildly negative mood"
+    },
+    {
+      "input": "今天吃了蔬菜沙拉，很健康",
+      "expected": {
+        "category": "饮食",
+        "mood": "positive",
+        "metrics": {}
+      },
+      "extracted": {
+        "category": "饮食",
+        "mood": "positive",
+        "metrics": {},
+        "note": "今天吃了蔬菜沙拉，很健康",
+        "raw_input": "今天吃了蔬菜沙拉，很健康",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "diet",
+      "description": "Healthy meal"
+    },
+    {
+      "input": "喝了8杯水",
+      "expected": {
+        "category": "饮食",
+        "mood": "neutral",
+        "metrics": {
+          "glasses": 8
+        }
+      },
+      "extracted": {
+        "category": "饮食",
+        "mood": "neutral",
+        "metrics": {
+          "glasses": 8
+        },
+        "note": null,
+        "raw_input": "喝了8杯水",
+        "is_valid": false,
+        "error": "Invalid metric for 饮食: glasses"
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "diet",
+      "description": "Water intake with count"
+    },
+    {
+      "input": "没吃早饭",
+      "expected": {
+        "category": "饮食",
+        "mood": "neutral",
+        "metrics": {}
+      },
+      "extracted": {
+        "category": "饮食",
+        "mood": "neutral",
+        "metrics": {},
+        "note": "没吃早饭",
+        "raw_input": "没吃早饭",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "diet",
+      "description": "Missed meal"
+    },
+    {
+      "input": "今天状态很差，没学习",
+      "expected": {
+        "category": "学习",
+        "mood": "negative",
+        "metrics": {}
+      },
+      "extracted": {
+        "category": "学习",
+        "mood": "negative",
+        "metrics": {},
+        "note": "状态很差，没学习",
+        "raw_input": "今天状态很差，没学习",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "complex",
+      "description": "Negative study record"
+    },
+    {
+      "input": "今天什么都没做",
+      "expected": {
+        "category": "其他",
+        "mood": "neutral",
+        "metrics": {}
+      },
+      "extracted": {
+        "category": "其他",
+        "mood": "neutral",
+        "metrics": {},
+        "note": null,
+        "raw_input": "今天什么都没做",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "edge_case",
+      "description": "Vague input"
+    },
+    {
+      "input": "早上跑了步，晚上读了书",
+      "expected": {
+        "category": "运动",
+        "mood": "neutral",
+        "metrics": {}
+      },
+      "extracted": {
+        "category": "运动",
+        "mood": "neutral",
+        "metrics": {},
+        "note": null,
+        "raw_input": "早上跑了步，晚上读了书",
+        "is_valid": true,
+        "error": null
+      },
+      "passed": true,
+      "discrepancies": [],
+      "category": "complex",
+      "description": "Multiple activities"
+    }
+  ]
+}

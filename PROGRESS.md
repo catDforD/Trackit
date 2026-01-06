@@ -313,15 +313,15 @@ else:
 
 ## ⚠️ 已知限制
 
-1. **LLM功能需要API密钥**
-   - HabitExtractor需要Claude API
+1. **LLM功能需要API密钥** (已采用 openai 接口并正确配置)
+   - HabitExtractor需要Claude API 
    - 未配置时会报错
 
-2. **测试依赖未安装**
-   - jsonschema、anthropic等包未安装
+2. **测试依赖未安装** (已安装)
+   - jsonschema、anthropic等包未安装 
    - 需要运行 `pip install -r requirements.txt`
 
-3. **功能不完整**
+3. **功能不完整** (目前即将进行)
    - QueryAgent未实现
    - 分析模块未实现
    - Gradio界面未实现
