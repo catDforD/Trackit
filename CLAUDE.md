@@ -2,6 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git 工作流操作指南
+- 每次提交时,都要写中文的 commit message,参考项目历史 commit 风格
+
 ## 仓库概述
 
 这是一个AI Agent学习项目仓库,用于研究生的AI/ML Agent系统学习。仓库包含三个详细的AI Agent项目设计文档,目前处于设计阶段,尚未开始代码实现。

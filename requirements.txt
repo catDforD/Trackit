@@ -1,5 +1,6 @@
 # Core dependencies
 anthropic>=0.40.0              # Claude API
+openai>=1.0.0                 # OpenAI API (and compatible APIs)
 python-dotenv>=1.0.0          # Environment variables
 
 # Database

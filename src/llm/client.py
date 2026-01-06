@@ -1,8 +1,8 @@
 """
-Claude API client for Trackit.
+Unified LLM client for Trackit.
 
-This module provides a robust wrapper around the Anthropic Claude API
-with retry logic, error handling, and cost tracking.
+This module provides a unified interface for both Anthropic and OpenAI APIs
+with automatic retry logic, error handling, and cost tracking.
 
 Author: Trackit Development
 """
@@ -10,55 +10,89 @@ Author: Trackit Development
 import time
 import json
 from typing import Dict, Any, List, Optional, Callable
-from anthropic import Anthropic
-from anthropic.types import Message
-
+from abc import ABC, abstractmethod
 from ..config.settings import settings
 
+try:
+    from anthropic import Anthropic
+    from anthropic.types import Message
+    ANTHROPIC_AVAILABLE = True
+except ImportError:
+    ANTHROPIC_AVAILABLE = False
 
-class LLMClient:
+try:
+    from openai import OpenAI
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+
+
+class BaseLLMClient(ABC):
     """
-    Wrapper for Claude API with enhanced error handling and cost tracking.
+    Abstract base class for LLM clients.
 
-    Features:
-    - Automatic retry with exponential backoff
-    - Token counting and cost estimation
-    - JSON response validation
-    - Request/response logging in debug mode
-
-    Example:
-        >>> client = LLMClient()
-        >>> response = client.call_with_retry(
-        ...     messages=[{"role": "user", "content": "Hello"}],
-        ...     model=settings.MODEL_EXTRACTION
-        ... )
-        >>> print(response.content)
+    Defines the common interface that all LLM provider clients must implement.
     """
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        max_retries: Optional[int] = None,
-        retry_delay: Optional[float] = None
+        api_key: str,
+        max_retries: int = 3,
+        retry_delay: float = 1.0,
     ):
         """
         Initialize the LLM client.
 
         Args:
-            api_key: Anthropic API key (defaults to settings)
+            api_key: API key for the LLM service
             max_retries: Maximum number of retry attempts
             retry_delay: Initial delay between retries (seconds)
         """
-        self.api_key = api_key or settings.ANTHROPIC_API_KEY
-        self.max_retries = max_retries or settings.MAX_RETRIES
-        self.retry_delay = retry_delay or settings.RETRY_DELAY
-
-        self.client = Anthropic(api_key=self.api_key)
+        self.api_key = api_key
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
 
         # Track usage statistics
         self.total_tokens_used = 0
         self.total_cost = 0.0
         self.total_calls = 0
+
+    @abstractmethod
+    def _call_api(
+        self,
+        messages: List[Dict[str, str]],
+        model: str,
+        max_tokens: int,
+        temperature: float,
+    ) -> Any:
+        """
+        Make the actual API call.
+
+        Args:
+            messages: List of message dictionaries
+            model: Model name
+            max_tokens: Maximum tokens in response
+            temperature: Sampling temperature
+
+        Returns:
+            Raw API response
+        """
+        pass
+
+    @abstractmethod
+    def _extract_response_data(self, response: Any, model: str) -> Dict[str, Any]:
+        """
+        Extract relevant data from API response.
+
+        Args:
+            response: Raw API response
+            model: Model name for cost calculation
+
+        Returns:
+            Dictionary with response data
+        """
+        pass
+
 
     def call_with_retry(
         self,
@@ -101,12 +135,7 @@ class LLMClient:
                     print(f"[DEBUG] Messages: {messages[:1]}...")  # First message only
 
                 # Make API call
-                response = self.client.messages.create(
-                    model=model,
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                    messages=messages
-                )
+                response = self._call_api(messages, model, max_tokens, temperature)
 
                 # Extract response data
                 result = self._extract_response_data(response, model)
@@ -142,37 +171,6 @@ class LLMClient:
 
         # All retries failed
         raise Exception(f"LLM call failed after {self.max_retries} attempts: {str(last_exception)}")
-
-    def _extract_response_data(self, response: Message, model: str) -> Dict[str, Any]:
-        """
-        Extract relevant data from API response.
-
-        Args:
-            response: Raw API response object
-            model: Model name for cost calculation
-
-        Returns:
-            Dictionary with response data
-        """
-        # Get text content
-        content = response.content[0].text
-
-        # Get token usage
-        input_tokens = response.usage.input_tokens
-        output_tokens = response.usage.output_tokens
-
-        # Calculate cost
-        cost = settings.estimate_cost(model, input_tokens, output_tokens)
-
-        return {
-            "content": content,
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-            "total_tokens": input_tokens + output_tokens,
-            "cost": cost,
-            "model": model,
-            "raw": response
-        }
 
     def _validate_json_response(
         self,
@@ -242,6 +240,281 @@ class LLMClient:
         self.total_calls = 0
 
 
+class AnthropicClient(BaseLLMClient):
+    """
+    Anthropic Claude API client implementation.
+
+    Provides a wrapper around the Anthropic Claude API with enhanced error handling.
+    """
+
+    def __init__(
+        self,
+        api_key: str,
+        max_retries: int = 3,
+        retry_delay: float = 1.0,
+    ):
+        """
+        Initialize the Anthropic client.
+
+        Args:
+            api_key: Anthropic API key
+            max_retries: Maximum number of retry attempts
+            retry_delay: Initial delay between retries (seconds)
+        """
+        if not ANTHROPIC_AVAILABLE:
+            raise ImportError(
+                "anthropic package is required for AnthropicClient. "
+                "Install it with: pip install anthropic"
+            )
+
+        super().__init__(api_key, max_retries, retry_delay)
+        self.client = Anthropic(api_key=self.api_key)
+
+    def _call_api(
+        self,
+        messages: List[Dict[str, str]],
+        model: str,
+        max_tokens: int,
+        temperature: float,
+    ) -> Message:
+        """Make API call to Anthropic."""
+        return self.client.messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            messages=messages
+        )
+
+    def _extract_response_data(self, response: Message, model: str) -> Dict[str, Any]:
+        """Extract data from Anthropic response."""
+        # Get text content
+        content = response.content[0].text
+
+        # Get token usage
+        input_tokens = response.usage.input_tokens
+        output_tokens = response.usage.output_tokens
+
+        # Calculate cost
+        cost = settings.estimate_cost(model, input_tokens, output_tokens)
+
+        return {
+            "content": content,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": input_tokens + output_tokens,
+            "cost": cost,
+            "model": model,
+            "raw": response
+        }
+
+
+class OpenAIClient(BaseLLMClient):
+    """
+    OpenAI API client implementation.
+
+    Provides a wrapper around the OpenAI API (and compatible APIs) with enhanced error handling.
+    Supports custom base_url for using OpenAI-compatible services.
+    """
+
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str = "https://api.openai.com/v1",
+        max_retries: int = 3,
+        retry_delay: float = 1.0,
+    ):
+        """
+        Initialize the OpenAI client.
+
+        Args:
+            api_key: OpenAI API key
+            base_url: Base URL for the API (can be customized for compatible services)
+            max_retries: Maximum number of retry attempts
+            retry_delay: Initial delay between retries (seconds)
+        """
+        if not OPENAI_AVAILABLE:
+            raise ImportError(
+                "openai package is required for OpenAIClient. "
+                "Install it with: pip install openai"
+            )
+
+        super().__init__(api_key, max_retries, retry_delay)
+        self.base_url = base_url
+        self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
+
+    def _call_api(
+        self,
+        messages: List[Dict[str, str]],
+        model: str,
+        max_tokens: int,
+        temperature: float,
+    ) -> Any:
+        """Make API call to OpenAI."""
+        return self.client.chat.completions.create(
+            model=model,
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+
+    def _extract_response_data(self, response: Any, model: str) -> Dict[str, Any]:
+        """Extract data from OpenAI response."""
+        # Get text content
+        content = response.choices[0].message.content
+
+        # Get token usage
+        input_tokens = response.usage.prompt_tokens
+        output_tokens = response.usage.completion_tokens
+
+        # Calculate cost
+        cost = settings.estimate_cost(model, input_tokens, output_tokens)
+
+        return {
+            "content": content,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": input_tokens + output_tokens,
+            "cost": cost,
+            "model": model,
+            "raw": response
+        }
+
+
+class LLMClient:
+    """
+    Unified LLM client that supports multiple providers.
+
+    This factory class creates the appropriate client based on the LLM_PROVIDER setting.
+    It provides a consistent interface regardless of the underlying provider.
+
+    Example:
+        >>> # Uses provider from settings
+        >>> client = LLMClient()
+        >>> response = client.call_with_retry(
+        ...     messages=[{"role": "user", "content": "Hello"}],
+        ...     model="gpt-4o-mini"
+        ... )
+
+        >>> # Override provider
+        >>> client = LLMClient(provider="openai")
+        >>> response = client.call_with_retry(...)
+    """
+
+    def __init__(
+        self,
+        provider: Optional[str] = None,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+        max_retries: Optional[int] = None,
+        retry_delay: Optional[float] = None,
+    ):
+        """
+        Initialize the unified LLM client.
+
+        Args:
+            provider: LLM provider ("anthropic" or "openai"). Defaults to settings.LLM_PROVIDER
+            api_key: API key (defaults to settings)
+            base_url: Base URL for OpenAI-compatible APIs (only for OpenAI provider)
+            max_retries: Maximum number of retry attempts
+            retry_delay: Initial delay between retries (seconds)
+        """
+        self.provider = provider or settings.LLM_PROVIDER
+        self.max_retries = max_retries or settings.MAX_RETRIES
+        self.retry_delay = retry_delay or settings.RETRY_DELAY
+
+        # Create the appropriate client based on provider
+        if self.provider == "anthropic":
+            api_key = api_key or settings.ANTHROPIC_API_KEY
+            if not api_key:
+                raise ValueError(
+                    "ANTHROPIC_API_KEY is required for Anthropic provider. "
+                    "Set it in .env or pass api_key parameter."
+                )
+            self._client = AnthropicClient(
+                api_key=api_key,
+                max_retries=self.max_retries,
+                retry_delay=self.retry_delay,
+            )
+
+        elif self.provider == "openai":
+            api_key = api_key or settings.OPENAI_API_KEY
+            base_url = base_url or settings.OPENAI_BASE_URL
+            if not api_key:
+                raise ValueError(
+                    "OPENAI_API_KEY is required for OpenAI provider. "
+                    "Set it in .env or pass api_key parameter."
+                )
+            self._client = OpenAIClient(
+                api_key=api_key,
+                base_url=base_url,
+                max_retries=self.max_retries,
+                retry_delay=self.retry_delay,
+            )
+
+        else:
+            raise ValueError(
+                f"Unsupported provider: {self.provider}. "
+                "Must be 'anthropic' or 'openai'."
+            )
+
+    def call_with_retry(
+        self,
+        messages: List[Dict[str, str]],
+        model: str,
+        max_tokens: int = 1024,
+        temperature: float = 0.0,
+        expected_format: Optional[Dict[str, Any]] = None,
+        response_processor: Optional[Callable] = None
+    ) -> Dict[str, Any]:
+        """
+        Call LLM with automatic retry on failure.
+
+        This method delegates to the underlying provider-specific client.
+
+        Args:
+            messages: List of message dictionaries with 'role' and 'content'
+            model: Model name to use
+            max_tokens: Maximum tokens in response
+            temperature: Sampling temperature
+            expected_format: Optional JSON schema for validation
+            response_processor: Optional function to process response
+
+        Returns:
+            Dictionary with response data
+        """
+        return self._client.call_with_retry(
+            messages=messages,
+            model=model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            expected_format=expected_format,
+            response_processor=response_processor,
+        )
+
+    def get_usage_stats(self) -> Dict[str, Any]:
+        """Get usage statistics."""
+        return self._client.get_usage_stats()
+
+    def reset_stats(self) -> None:
+        """Reset usage statistics."""
+        self._client.reset_stats()
+
+    @property
+    def total_tokens_used(self) -> int:
+        """Total tokens used since client initialization."""
+        return self._client.total_tokens_used
+
+    @property
+    def total_cost(self) -> float:
+        """Total cost in USD since client initialization."""
+        return self._client.total_cost
+
+    @property
+    def total_calls(self) -> int:
+        """Total number of API calls since client initialization."""
+        return self._client.total_calls
+
+
 def extract_json_from_response(content: str) -> Dict[str, Any]:
     """
     Extract and parse JSON from LLM response.
@@ -289,31 +562,48 @@ if __name__ == "__main__":
     # Test: Basic client functionality
     from ..config.prompts import Prompts
 
-    print("Testing LLM Client...")
+    print("Testing Unified LLM Client...")
     print("=" * 60)
 
-    # Note: This will fail if ANTHROPIC_API_KEY is not set
+    # Note: This will fail if API keys are not set
     try:
-        client = LLMClient()
+        # Test with Anthropic
+        if settings.LLM_PROVIDER == "anthropic" and settings.ANTHROPIC_API_KEY:
+            print("\n1. Testing Anthropic Client...")
+            client = LLMClient(provider="anthropic")
 
-        # Simple test call
-        prompt = Prompts.get_extraction_prompt("今天跑了5公里")
-        response = client.call_with_retry(
-            messages=[{"role": "user", "content": prompt}],
-            model=settings.MODEL_EXTRACTION
-        )
+            prompt = Prompts.get_extraction_prompt("今天跑了5公里")
+            response = client.call_with_retry(
+                messages=[{"role": "user", "content": prompt}],
+                model=settings.MODEL_EXTRACTION
+            )
 
-        print("\nResponse:")
-        print(response["content"])
-        print(f"\nTokens: {response['total_tokens']}")
-        print(f"Cost: ${response['cost']:.4f}")
+            print("Response:", response["content"][:100])
+            print("Tokens:", response['total_tokens'])
+            print("Cost:", f"${response['cost']:.4f}")
+            print("Usage Stats:", client.get_usage_stats())
+
+        # Test with OpenAI
+        elif settings.LLM_PROVIDER == "openai" and settings.OPENAI_API_KEY:
+            print("\n1. Testing OpenAI Client...")
+            client = LLMClient(provider="openai")
+
+            prompt = Prompts.get_extraction_prompt("今天跑了5公里")
+            response = client.call_with_retry(
+                messages=[{"role": "user", "content": prompt}],
+                model="gpt-4o"
+            )
+
+            print("Response:", response["content"][:100])
+            print("Tokens:", response['total_tokens'])
+            print("Cost:", f"${response['cost']:.4f}")
+            print("Usage Stats:", client.get_usage_stats())
 
         print("\n" + "=" * 60)
-        print("Usage Statistics:")
-        print(client.get_usage_stats())
+        print("Test completed successfully!")
 
     except ValueError as e:
         print(f"Configuration error: {e}")
-        print("Make sure ANTHROPIC_API_KEY is set in .env file")
+        print("Make sure appropriate API keys are set in .env file")
     except Exception as e:
         print(f"Error: {e}")

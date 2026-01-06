@@ -18,6 +18,9 @@ from jsonschema import validate, ValidationError
 EXTRACTION_SCHEMA = {
     "type": "object",
     "properties": {
+        "raw_input": {
+            "type": "string"
+        },
         "category": {
             "type": "string",
             "enum": ["运动", "学习", "睡眠", "情绪", "饮食", "其他"]
@@ -29,12 +32,24 @@ EXTRACTION_SCHEMA = {
         "metrics": {
             "type": "object",
             "patternProperties": {
-                ".+": ["number", "string"]
+                ".+": {
+                    "oneOf": [
+                        {"type": "number"},
+                        {"type": "string"},
+                        {"type": "boolean"}
+                    ]
+                }
             }
         },
         "note": {
             "type": ["string", "null"],
             "maxLength": 500
+        },
+        "is_valid": {
+            "type": "boolean"
+        },
+        "error": {
+            "type": ["string", "null"]
         }
     },
     "required": ["category", "mood", "metrics"],

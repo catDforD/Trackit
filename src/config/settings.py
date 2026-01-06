@@ -40,13 +40,23 @@ class Settings:
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///data/trackit.db")
     DB_PATH: str = DATABASE_URL.replace("sqlite:///", "")
 
+    # LLM Provider Selection
+    # Options: "anthropic" or "openai"
+    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "anthropic")
+
     # Anthropic Claude API
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
+
+    # OpenAI API (and compatible APIs)
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
 
     # Model Selection
     # Cost optimization: Use Haiku for simple tasks, Sonnet for complex ones
     # Haiku: $0.80/$4 per 1M tokens (fast, cost-effective)
     # Sonnet: $3/$15 per 1M tokens (best quality)
+    # GPT-4o-mini: $0.15/$0.60 per 1M tokens (cost-effective)
+    # GPT-4o: $2.50/$10.00 per 1M tokens (best quality)
 
     MODEL_EXTRACTION: str = os.getenv(
         "MODEL_EXTRACTION",
@@ -65,8 +75,10 @@ class Settings:
 
     # Model configurations
     MODEL_CONFIGS: Dict[str, Dict[str, Any]] = {
+        # Anthropic Models
         "claude-3-5-haiku-20241022": {
             "name": "Claude 3.5 Haiku",
+            "provider": "anthropic",
             "max_tokens": 8192,
             "temperature": 0.0,
             "cost_per_input": 0.80,  # per 1M tokens
@@ -74,10 +86,36 @@ class Settings:
         },
         "claude-3-5-sonnet-20241022": {
             "name": "Claude 3.5 Sonnet",
+            "provider": "anthropic",
             "max_tokens": 8192,
             "temperature": 0.0,
             "cost_per_input": 3.0,
             "cost_per_output": 15.0,
+        },
+        # OpenAI Models
+        "gpt-4o-mini": {
+            "name": "GPT-4o Mini",
+            "provider": "openai",
+            "max_tokens": 16384,
+            "temperature": 0.0,
+            "cost_per_input": 0.15,
+            "cost_per_output": 0.60,
+        },
+        "gpt-4o": {
+            "name": "GPT-4o",
+            "provider": "openai",
+            "max_tokens": 4096,
+            "temperature": 0.0,
+            "cost_per_input": 2.50,
+            "cost_per_output": 10.0,
+        },
+        "gpt-4-turbo": {
+            "name": "GPT-4 Turbo",
+            "provider": "openai",
+            "max_tokens": 4096,
+            "temperature": 0.0,
+            "cost_per_input": 10.0,
+            "cost_per_output": 30.0,
         }
     }
 
@@ -100,13 +138,28 @@ class Settings:
         Validate that required settings are present.
 
         Raises:
-            ValueError: If required API keys are missing
+            ValueError: If required API keys are missing or configuration is invalid
         """
-        if not self.ANTHROPIC_API_KEY:
+        # Validate provider
+        if self.LLM_PROVIDER not in ["anthropic", "openai"]:
             raise ValueError(
-                "ANTHROPIC_API_KEY is required! "
-                "Please set it in .env file or environment variables."
+                f"Invalid LLM_PROVIDER: {self.LLM_PROVIDER}. "
+                "Must be 'anthropic' or 'openai'."
             )
+
+        # Validate API keys based on provider
+        if self.LLM_PROVIDER == "anthropic":
+            if not self.ANTHROPIC_API_KEY:
+                raise ValueError(
+                    "ANTHROPIC_API_KEY is required when LLM_PROVIDER is 'anthropic'! "
+                    "Please set it in .env file or environment variables."
+                )
+        elif self.LLM_PROVIDER == "openai":
+            if not self.OPENAI_API_KEY:
+                raise ValueError(
+                    "OPENAI_API_KEY is required when LLM_PROVIDER is 'openai'! "
+                    "Please set it in .env file or environment variables."
+                )
 
     def get_model_config(self, model_name: str) -> Dict[str, Any]:
         """
@@ -158,10 +211,11 @@ class Settings:
         return (
             f"Settings(\n"
             f"  APP_NAME={self.APP_NAME},\n"
+            f"  LLM_PROVIDER={self.LLM_PROVIDER},\n"
             f"  DB_PATH={self.DB_PATH},\n"
             f"  MODEL_EXTRACTION={self.MODEL_EXTRACTION},\n"
             f"  MODEL_REPORT={self.MODEL_REPORT},\n"
-            f"  API_KEY configured={bool(self.ANTHROPIC_API_KEY)}\n"
+            f"  API_KEY configured={bool(self.ANTHROPIC_API_KEY if self.LLM_PROVIDER == 'anthropic' else self.OPENAI_API_KEY)}\n"
             f")"
         )
 

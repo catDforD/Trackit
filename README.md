@@ -9,7 +9,8 @@
 ## ✨ 特性
 
 - 🗣️ **自然语言输入** - 像聊天一样记录习惯，无需填写表单
-- 🤖 **智能信息提取** - 使用Claude API自动提取结构化数据
+- 🤖 **智能信息提取** - 使用LLM自动提取结构化数据
+- 🔌 **多提供商支持** - 支持 Anthropic Claude、OpenAI 及兼容服务
 - 📊 **时序分析** - 基于Pandas的趋势分析和模式发现
 - 📈 **数据可视化** - 自动生成图表展示习惯趋势
 - 📝 **智能周报** - LLM驱动的个性化复盘报告
@@ -55,8 +56,20 @@ pip install -r requirements.txt
 # 复制环境变量模板
 cp .env.example .env
 
-# 编辑.env文件，填入你的Claude API密钥
-# ANTHROPIC_API_KEY=sk-ant-xxx
+# 编辑.env文件，选择LLM提供商并配置API密钥
+
+# 方式1: 使用 Anthropic Claude (默认)
+LLM_PROVIDER=anthropic
+ANTHROPIC_API_KEY=sk-ant-xxx
+
+# 方式2: 使用 OpenAI
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-proj-xxx
+
+# 方式3: 使用本地 Ollama 或其他兼容服务
+LLM_PROVIDER=openai
+OPENAI_API_KEY=your_key
+OPENAI_BASE_URL=http://localhost:11434/v1
 ```
 
 ### 3. 初始化数据库
@@ -127,7 +140,7 @@ python -m src.agents.recording_agent
 | 组件 | 技术 | 用途 |
 |------|------|------|
 | 数据库 | SQLite | 存储习惯记录 |
-| LLM | Claude API | 信息提取、报告生成 |
+| LLM | Anthropic Claude / OpenAI | 信息提取、报告生成 |
 | 数据分析 | Pandas | 时序分析、趋势检测 |
 | 可视化 | Matplotlib/Plotly | 图表生成 |
 | 前端 | Gradio | Web界面（开发中） |
@@ -143,6 +156,87 @@ python -m src.agents.recording_agent
 5. ✅ **测试实践** - 单元测试、临时文件测试
 
 详细教程请查看 `docs/` 目录。
+
+## 🔧 LLM 提供商配置
+
+Trackit 支持多种 LLM 提供商，可以根据需求灵活选择：
+
+### Anthropic Claude (推荐用于中文)
+
+**优势**:
+- 中文理解能力强
+- JSON 输出格式稳定
+- 适合结构化数据提取
+
+**模型选择**:
+- `claude-3-5-haiku-20241022` - 快速、经济 ($0.80/$4 per 1M tokens)
+- `claude-3-5-sonnet-20241022` - 最佳质量 ($3/$15 per 1M tokens)
+
+**配置**:
+```bash
+LLM_PROVIDER=anthropic
+ANTHROPIC_API_KEY=sk-ant-xxx
+MODEL_EXTRACTION=claude-3-5-haiku-20241022
+MODEL_REPORT=claude-3-5-sonnet-20241022
+```
+
+### OpenAI (推荐用于成本优化)
+
+**优势**:
+- GPT-4o-mini 成本极低
+- API 响应速度快
+- 支持大量兼容服务
+
+**模型选择**:
+- `gpt-4o-mini` - 最新小模型，性价比最高 ($0.15/$0.60 per 1M tokens)
+- `gpt-4o` - 最新旗舰模型 ($2.50/$10.00 per 1M tokens)
+- `gpt-4-turbo` - 上一代模型 ($10/$30 per 1M tokens)
+
+**配置**:
+```bash
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-proj-xxx
+MODEL_EXTRACTION=gpt-4o-mini
+MODEL_REPORT=gpt-4o
+```
+
+### OpenAI 兼容服务
+
+支持任何兼容 OpenAI API 格式的服务：
+
+**本地 Ollama**:
+```bash
+LLM_PROVIDER=openai
+OPENAI_API_KEY=ollama
+OPENAI_BASE_URL=http://localhost:11434/v1
+MODEL_EXTRACTION=llama3.2
+```
+
+**Azure OpenAI**:
+```bash
+LLM_PROVIDER=openai
+OPENAI_API_KEY=your_azure_key
+OPENAI_BASE_URL=https://your-resource.openai.azure.com/
+```
+
+**其他兼容服务**:
+- 通义千问 (Qwen)
+- DeepSeek
+- 本地部署的开源模型
+
+### 成本对比
+
+以提取 1000 条习惯记录为例（平均每条 500 tokens）：
+
+| 提供商 | 模型 | 成本 (估算) |
+|--------|------|-----------|
+| OpenAI | gpt-4o-mini | ~$0.04 |
+| Anthropic | claude-3-5-haiku | ~$0.20 |
+| OpenAI | gpt-4o | ~$0.25 |
+| Anthropic | claude-3.5-sonnet | ~$0.75 |
+
+> 💡 **建议**: 开发测试用 gpt-4o-mini 或 claude-3.5-haiku，生产环境根据质量需求选择。
+
 
 ## 📈 开发进度
 
