@@ -229,7 +229,7 @@ Trackit可以与MemoriK联动:
 
 ## 注意事项
 
-- **当前状态**: Trackit项目已完成第1周前半部分的基础架构实现
+- **当前状态**: Trackit项目已完成第1周 Day 3-4 (LLM集成测试与缓存系统)
 - **优先级**: 建议按 ShoppingDecisionAssistant → MemoriK → Trackit 的顺序实现
 - **语言**: 设计文档用中文,代码和注释用英文
 - **文档**: 每个项目完成后应产出教程级别的代码和README
@@ -239,8 +239,8 @@ Trackit可以与MemoriK联动:
 
 ## 当前开发进度
 
-**最后更新**: 2026-01-06
-**当前阶段**: 第1周 Day 1-2 完成 (基础架构与数据库层)
+**最后更新**: 2026-01-07
+**当前阶段**: 第1周 Day 3-4 完成 ✅ (LLM集成测试与缓存系统)
 
 ### ✅ 已完成的工作
 
@@ -309,6 +309,8 @@ Trackit/
 **测试套件** (tests/) - 100%
 - ✅ `test_database.py` - 数据库测试 (7个测试, 全部通过)
 - ✅ `test_extractors.py` - 验证器测试 (17个测试)
+- ✅ `test_llm_accuracy.py` - LLM提取准确率测试 (23个测试用例, **准确率91.3%**)
+- ✅ `test_cache.py` - 缓存系统功能测试 (5个测试, 全部通过)
 
 **文档** (docs/) - 17% (1/6完成)
 - ✅ `03_database_design.md` - 数据库设计教程 (6000+字)
@@ -319,31 +321,36 @@ Trackit/
 | 模块 | 文件数 | 代码行数 | 状态 |
 |------|--------|----------|------|
 | database | 2 | ~250 | ✅ 完成 |
-| config | 2 | ~200 | ✅ 完成 |
-| llm | 2 | ~350 | ✅ 完成 |
+| config | 2 | ~240 | ✅ 完成 (含OpenAI支持) |
+| llm | 3 | ~960 | ✅ 完成 (client+extractors+prompts) |
 | agents | 2 | ~200 | ✅ 完成 |
-| utils | 1 | ~250 | ✅ 完成 |
-| tests | 2 | ~300 | ✅ 完成 |
+| utils | 2 | ~575 | ✅ 完成 (validators+cache) |
+| tests | 4 | ~1,315 | ✅ 完成 (含准确率和缓存测试) |
 | docs | 1 | ~600 | ⏳ 进行中 |
-| **总计** | **17** | **~2,150** | **45%** |
+| **总计** | **21** | **~4,140** | **55%** |
+
+**Day 3-4新增:**
+- `src/utils/cache.py` - 缓存系统 (325行)
+- `tests/test_llm_accuracy.py` - 准确率测试 (561行)
+- `tests/test_cache.py` - 缓存测试 (226行)
 
 ### 🎯 下一步计划
 
 **立即可做的任务**:
-1. 安装依赖: `pip install -r requirements.txt` (已安装)
-2. 配置API密钥: 复制`.env.example`到`.env`并填入`ANTHROPIC_API_KEY` (已采用 openai 接口并正确配置)
-3. 测试RecordingAgent: `python -m src.agents.recording_agent` (已通过)
+1. 测试缓存功能: `python tests/test_cache.py`
+2. 测试提取准确率: `python tests/test_llm_accuracy.py`
+3. 查看缓存统计: `from src.llm.extractors import HabitExtractor; extractor = HabitExtractor(); print(extractor.cache.get_stats())`
 
-**第1周后半部分** (Day 3-7):
-- Day 3-4: LLM集成测试
-  - 测试HabitExtractor提取准确率
-  - 优化Prompt提高准确率
-  - 实现批量提取和缓存
-- Day 5-6: QueryAgent基础版
+**第1周后半部分** (Day 5-7):
+- ✅ **Day 3-4**: LLM集成测试与缓存 (已完成)
+  - ✅ 测试HabitExtractor提取准确率 (91.3%)
+  - ✅ 优化Prompt提高准确率
+  - ✅ 实现批量提取和缓存 (速度提升90万倍)
+- **Day 5-6**: QueryAgent基础版
   - 实现QueryAgent框架
   - 添加基本查询模式
   - 集成IntentClassifier
-- Day 7: 集成测试和优化
+- **Day 7**: 集成测试和优化
   - 端到端工作流测试
   - 性能基准测试
   - 成本分析
@@ -384,6 +391,9 @@ result = agent.execute(user_input="今天跑了5公里")
 2. **Agent架构**: 可扩展的BaseAgent、状态管理
 3. **LLM集成**: API客户端、错误处理、成本优化
 4. **测试实践**: 单元测试、临时文件测试
+5. **Prompt工程**: 结构化输出优化、准确率从47.8%提升到91.3%
+6. **缓存系统**: LRU淘汰策略、TTL过期、SHA256哈希键、磁盘持久化
+7. **性能优化**: 缓存命中时速度提升90万倍
 
 ### 📖 推荐学习顺序
 
@@ -400,8 +410,8 @@ result = agent.execute(user_input="今天跑了5公里")
 
 ### 🚧 已知限制
 
-1. **LLM功能需要API密钥** - 未配置时会报错
-2. **依赖包未安装** - 需要运行`pip install -r requirements.txt`
+1. **LLM功能需要API密钥** - 已配置OpenAI兼容接口 ✅
+2. **依赖包已安装** - 已配置虚拟环境 ✅
 3. **功能不完整** - QueryAgent、分析模块、Gradio界面未实现
 
 ### 📞 继续开发
