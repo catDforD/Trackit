@@ -77,6 +77,7 @@ class HabitVisualizer:
     def plot_weekly_summary(
         self,
         week_iso: Optional[str] = None,
+        weeks: int = 1,
         save_path: Optional[str] = None
     ) -> plt.Figure:
         """
@@ -89,7 +90,9 @@ class HabitVisualizer:
         4. Metrics summary (if available)
 
         Args:
-            week_iso: ISO week string (e.g., "2026-W02"). If None, uses current week.
+            week_iso: ISO week string (e.g., "2026-W02"). If provided, uses this week.
+                      If None, uses the most recent week (based on weeks parameter).
+            weeks: Number of weeks to look back if week_iso is not provided (default: 1)
             save_path: Optional path to save the figure
 
         Returns:
@@ -98,8 +101,14 @@ class HabitVisualizer:
         Example:
             >>> fig = visualizer.plot_weekly_summary("2026-W02")
             >>> fig.savefig('week_summary.png', dpi=300, bbox_inches='tight')
+            >>> fig = visualizer.plot_weekly_summary(weeks=2)  # Last 2 weeks summary
         """
-        # Get weekly statistics
+        # Get weekly statistics - use weekly_statistics with weeks parameter
+        if week_iso is None:
+            # Generate current week ISO string if not provided
+            from datetime import datetime
+            week_iso = datetime.now().strftime('%Y-W%W')
+
         stats = self.analyzer.weekly_statistics(week_iso=week_iso)
 
         if stats['total_entries'] == 0:

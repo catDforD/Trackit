@@ -11,9 +11,9 @@ Trackit - 习惯追踪与复盘Agent，一个AI驱动的个人习惯管理和分
 
 ### 当前状态
 
-**进度**: 第2周完成 (2/6周) ✅
+**进度**: 第3周部分完成 (Day 15-17) ✅
 **最后更新**: 2026-01-07
-**完成度**: 33%
+**完成度**: 50%
 
 ### 核心技术栈
 
@@ -23,7 +23,7 @@ Trackit - 习惯追踪与复盘Agent，一个AI驱动的个人习惯管理和分
 | LLM | Claude API / OpenAI API |
 | 数据分析 | Pandas, NumPy |
 | 可视化 | Matplotlib, Plotly |
-| 前端 (待实现) | Gradio |
+| 前端 | Gradio 4.0+ |
 
 ### 项目架构
 
@@ -42,12 +42,15 @@ Trackit/
 │   │   ├── time_series.py        # 时序分析 ✅
 │   │   ├── patterns.py            # 模式检测 ✅
 │   │   ├── visualizer.py          # 可视化 ✅
-│   │   └── exporter.py            # 数据导出 ✅
+│   │   ├── exporter.py            # 数据导出 ✅
+│   │   └── report_generator.py   # 报告生成 ✅ (第3周)
+│   ├── app.py             # Gradio Web应用 ✅ (第3周)
 │   └── utils/             # 工具模块
 ├── tests/                 # 测试套件 (147个测试)
 ├── docs/                  # 文档
 ├── data/                  # 数据目录
 ├── requirements.txt       # Python依赖
+├── run_app.sh            # Web应用启动脚本 ✅ (第3周)
 └── .env.example          # API密钥模板
 ```
 
@@ -70,13 +73,20 @@ Trackit/
 5. **高级查询** - 智能路由, 5种查询类型
 6. **测试扩展** - 67个新测试, 共147个测试
 
+#### 第3周 (Day 15-17) ✅ 部分完成
+1. **报告生成系统** - ReportGenerator, 周报生成, AI洞察
+2. **Gradio Web界面** - 聊天界面, 数据看板, 报告展示
+3. **数据导出UI** - CSV/JSON导出功能
+4. **启动脚本** - 一键启动Web应用
+
 ### 代码统计
 
 | 阶段 | 代码行数 | 测试数 |
 |------|----------|--------|
 | 第1周 | ~6,930 | 72 |
 | 第2周 | ~4,979 | 67 |
-| **总计** | **~11,909** | **139** |
+| 第3周 | ~837 | - |
+| **总计** | **~12,746** | **139** |
 
 ### 环境配置
 
@@ -173,24 +183,54 @@ exporter.to_csv("export.csv")
 exporter.to_json("export.json")
 ```
 
-### 下一步计划 (第3周)
+#### 5. 报告生成模块
+```python
+from src.analysis.report_generator import ReportGenerator
 
-**Day 15-16**: 报告生成系统
-- 报告生成Prompt优化
-- LLM驱动的洞察生成
-- 个性化建议系统
+generator = ReportGenerator()
 
-**Day 17-18**: Gradio界面
-- 聊天界面
-- Dashboard仪表板
-- 图表展示
+# 生成周报
+report = generator.generate_weekly_report(weeks=2)
 
-**Day 19-20**: UI优化
-- 用户体验打磨
+# 获取报告文本
+print(report['text'])
+
+# 获取AI洞察
+if report['ai_insights']:
+    print(report['ai_insights'])
+
+# 保存报告
+generator.save_report(report, 'weekly_report', format='md')
+```
+
+#### 6. Gradio Web应用
+```bash
+# 启动Web应用
+python -m src.app --port=7862
+
+# 或使用启动脚本
+chmod +x run_app.sh
+./run_app.sh
+```
+
+访问 http://localhost:7862 使用：
+- **对话记录**: 自然语言记录和查询习惯
+- **数据看板**: 查看统计和图表
+- **报告生成**: 生成AI驱动的周报
+- **数据导出**: 导出CSV/JSON格式数据
+
+### 下一步计划 (第3周剩余)
+
+**Day 18-19**: UI优化
 - 快捷操作按钮
+- 用户体验打磨
 - 响应式设计
+- 中文字体配置
 
-**Day 21**: 集成测试
+**Day 20-21**: 集成测试
+- Web界面集成测试
+- 报告生成测试
+- 用户流程测试
 
 ### 技术学习重点
 
@@ -202,15 +242,19 @@ exporter.to_json("export.json")
 - ✅ 数据可视化
 - ✅ 测试驱动开发
 
+**第3周已完成**:
+- ✅ 报告生成系统
+- ✅ Gradio Web界面
+- ✅ AI驱动的洞察生成
+
 **第3-4周目标**:
-- Gradio Web界面
-- 报告生成系统
+- UI优化与打磨
 - 多Agent架构
 - 高级个性化
 
 ### 已知限制
 
-1. **Gradio界面未实现** - 预计第3周完成
+1. **UI优化待完成** - 快捷按钮、响应式设计
 2. **中文字体** - Matplotlib需要配置中文字体
 3. **性能测试阈值** - 部分测试需要根据环境调整
 

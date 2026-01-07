@@ -28,6 +28,7 @@ pytest-cov>=4.1.0             # Coverage reporting
 # Utilities
 python-dateutil>=2.8.2        # Date parsing
 pytz>=2023.3                  # Timezone support
+markdown>=3.4.0               # Markdown to HTML conversion
 
 # Optional: LangGraph for multi-agent (Week 4)
 # langgraph>=0.0.20
