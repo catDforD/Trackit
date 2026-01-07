@@ -18,6 +18,26 @@ from ..utils.validators import validate_entry_data
 from ..config.settings import settings
 
 
+class RecordingAgentError(Exception):
+    """Base exception for RecordingAgent errors."""
+    pass
+
+
+class ExtractionError(RecordingAgentError):
+    """Error during LLM extraction."""
+    pass
+
+
+class ValidationError(RecordingAgentError):
+    """Error during data validation."""
+    pass
+
+
+class DatabaseError(RecordingAgentError):
+    """Error during database operations."""
+    pass
+
+
 class RecordingAgent(BaseAgent):
     """
     Agent for recording habit entries.
@@ -56,8 +76,101 @@ class RecordingAgent(BaseAgent):
         self.repository = repository or HabitRepository(settings.DB_PATH)
         self.extractor = extractor or HabitExtractor()
 
-        # Optional: Custom feedback messages
-        self.feedback_templates = config.get("feedback_templates") if config else None
+        # Default feedback templates
+        self.feedback_templates = config.get("feedback_templates") if config else self._get_default_templates()
+
+        # Error messages
+        self.error_messages = {
+            "extraction_failed": "抱歉，我没能理解这条记录。请换种说法试试？",
+            "validation_failed": "记录格式有些问题，请提供更具体的信息。",
+            "database_error": "保存记录时出错，请稍后重试。",
+            "api_error": "AI服务暂时不可用，请稍后重试。",
+            "unknown_error": "发生了未知错误，请稍后重试。"
+        }
+
+    def _get_default_templates(self) -> Dict[str, Dict[str, str]]:
+        """
+        Get default feedback templates for different categories and moods.
+
+        Returns:
+            Dictionary of feedback templates organized by category
+        """
+        return {
+            "运动": {
+                "positive": [
+                    "太棒了！运动让人心情愉悦 🏃‍♂️",
+                    "继续保持！坚持就是胜利 💪",
+                    "运动完感觉很好吧？记录成功！"
+                ],
+                "neutral": [
+                    "已记录运动，明天继续加油！",
+                    "运动完成，继续保持！"
+                ],
+                "negative": [
+                    "运动虽累，但完成了就很棒！",
+                    "辛苦了，好好休息一下！"
+                ]
+            },
+            "学习": {
+                "positive": [
+                    "学习使人进步！为你点赞 📚",
+                    "太棒了！今天又学到了新知识 ✨",
+                    "继续保持学习热情！"
+                ],
+                "neutral": [
+                    "学习已记录，积少成多！",
+                    "每一天的学习都在积累力量！"
+                ],
+                "negative": [
+                    "学习遇到困难很正常，继续加油！",
+                    "慢慢来，理解比速度更重要！"
+                ]
+            },
+            "睡眠": {
+                "positive": [
+                    "良好的睡眠是健康的基础 😴",
+                    "睡眠充足，精神饱满！"
+                ],
+                "neutral": [
+                    "睡眠记录成功！",
+                    "作息规律很重要！"
+                ],
+                "negative": [
+                    "睡眠不好会影响状态，今晚早点休息 💤",
+                    "尝试调整作息，改善睡眠质量！"
+                ]
+            },
+            "情绪": {
+                "positive": [
+                    "保持积极心态，继续加油！✨",
+                    "好心情传递好能量！",
+                    "每天都保持这样积极的状态吧！"
+                ],
+                "neutral": [
+                    "情绪记录成功！",
+                    "记录心情，关注自我！"
+                ],
+                "negative": [
+                    "理解你的感受，明天会更好的 💙",
+                    "状态不好没关系，允许自己休息！",
+                    "记录下来，释放压力！"
+                ]
+            },
+            "饮食": {
+                "positive": [
+                    "健康饮食，身体更健康 🥗",
+                    "吃得健康，生活更美好！"
+                ],
+                "neutral": [
+                    "饮食已记录！",
+                    "关注饮食，关爱健康！"
+                ],
+                "negative": [
+                    "注意饮食平衡，身体是革命的本钱！",
+                    "偶尔放纵没关系，明天注意调整！"
+                ]
+            }
+        }
 
     def execute(
         self,
@@ -78,31 +191,62 @@ class RecordingAgent(BaseAgent):
                 - feedback: User-friendly feedback message
                 - extracted_data: The extracted structured data
                 - error: Error message (if failed)
+                - error_type: Type of error (if failed)
         """
         try:
+            # Validate input
+            if not user_input or not user_input.strip():
+                return {
+                    "success": False,
+                    "error": "输入不能为空",
+                    "error_type": "validation_error",
+                    "user_input": user_input
+                }
+
             # Step 1: Extract structured data
-            extracted = self.extractor.extract_with_retry(
-                user_input=user_input,
-                max_attempts=3
-            )
+            try:
+                extracted = self.extractor.extract_with_retry(
+                    user_input=user_input,
+                    max_attempts=3
+                )
+            except Exception as e:
+                return {
+                    "success": False,
+                    "error": self.error_messages["extraction_failed"],
+                    "error_type": "extraction_error",
+                    "details": str(e),
+                    "user_input": user_input
+                }
 
             # Step 2: Validate extraction
             if not extracted.get("is_valid"):
+                error_msg = extracted.get("error", "提取的数据验证失败")
                 return {
                     "success": False,
-                    "error": extracted.get("error", "Extraction validation failed"),
+                    "error": self.error_messages["validation_failed"],
+                    "error_type": "validation_error",
+                    "details": error_msg,
                     "extracted_data": extracted
                 }
 
             # Step 3: Store in database
-            entry_id = self.repository.add_entry(
-                raw_input=extracted["raw_input"],
-                category=extracted["category"],
-                mood=extracted["mood"],
-                metrics=extracted["metrics"],
-                note=extracted.get("note"),
-                entry_date=entry_date
-            )
+            try:
+                entry_id = self.repository.add_entry(
+                    raw_input=extracted["raw_input"],
+                    category=extracted["category"],
+                    mood=extracted["mood"],
+                    metrics=extracted["metrics"],
+                    note=extracted.get("note"),
+                    entry_date=entry_date
+                )
+            except Exception as e:
+                return {
+                    "success": False,
+                    "error": self.error_messages["database_error"],
+                    "error_type": "database_error",
+                    "details": str(e),
+                    "extracted_data": extracted
+                }
 
             # Step 4: Generate user feedback
             feedback = self._generate_feedback(extracted)
@@ -125,9 +269,12 @@ class RecordingAgent(BaseAgent):
             }
 
         except Exception as e:
+            # Catch-all for unexpected errors
             return {
                 "success": False,
-                "error": str(e),
+                "error": self.error_messages["unknown_error"],
+                "error_type": "unknown_error",
+                "details": str(e),
                 "user_input": user_input
             }
 
@@ -141,27 +288,36 @@ class RecordingAgent(BaseAgent):
         Returns:
             Feedback message string
         """
+        import random
+
         category = extracted.get("category", "其他")
         mood = extracted.get("mood", "neutral")
         metrics = extracted.get("metrics", {})
 
-        # Custom template if provided
-        if self.feedback_templates and category in self.feedback_templates:
-            return self.feedback_templates[category].format(
-                category=category,
-                mood=mood,
-                **metrics
+        # Try to use custom template based on category and mood
+        if category in self.feedback_templates:
+            mood_templates = self.feedback_templates[category]
+
+            # Get templates for the mood, fallback to neutral
+            templates = mood_templates.get(
+                mood,
+                mood_templates.get("neutral", [])
             )
 
-        # Default feedback templates
-        mood_emoji = {
-            "positive": "😊",
-            "neutral": "😐",
-            "negative": "😔"
-        }
-
-        emoji = mood_emoji.get(mood, "")
-        feedback = f"✓ 已记录：{category} {emoji}"
+            if templates:
+                # Randomly select from templates
+                feedback = random.choice(templates)
+            else:
+                feedback = f"✓ 已记录：{category}"
+        else:
+            # Fallback for categories without templates
+            mood_emoji = {
+                "positive": "😊",
+                "neutral": "😐",
+                "negative": "😔"
+            }
+            emoji = mood_emoji.get(mood, "")
+            feedback = f"✓ 已记录：{category} {emoji}"
 
         # Add metrics details
         if metrics:

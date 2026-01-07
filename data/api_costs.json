@@ -1,0 +1,32 @@
+[
+  {
+    "timestamp": "2026-01-07T14:17:42.933469",
+    "operation": "extract",
+    "model": "claude-3-5-haiku-20241022",
+    "input_tokens": 200,
+    "output_tokens": 150,
+    "total_tokens": 350,
+    "cost_usd": 0.0009499999999999999,
+    "cached": false
+  },
+  {
+    "timestamp": "2026-01-07T14:17:42.933652",
+    "operation": "extract",
+    "model": "claude-3-5-haiku-20241022",
+    "input_tokens": 200,
+    "output_tokens": 150,
+    "total_tokens": 350,
+    "cost_usd": 0.0009499999999999999,
+    "cached": true
+  },
+  {
+    "timestamp": "2026-01-07T14:17:42.933798",
+    "operation": "generate_report",
+    "model": "claude-3-5-sonnet-20241022",
+    "input_tokens": 1000,
+    "output_tokens": 1500,
+    "total_tokens": 2500,
+    "cost_usd": 0.0255,
+    "cached": false
+  }
+]

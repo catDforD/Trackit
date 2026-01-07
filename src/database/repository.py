@@ -251,6 +251,108 @@ class HabitRepository:
             """)
             return [row[0] for row in cursor.fetchall()]
 
+    def get_entries_by_category(
+        self,
+        category: str,
+        limit: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Get entries by category, optionally limited.
+
+        Args:
+            category: Category to filter by
+            limit: Maximum number of entries to return
+
+        Returns:
+            List of entry dictionaries
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            if limit:
+                cursor.execute("""
+                    SELECT * FROM entries
+                    WHERE category = ?
+                    ORDER BY date DESC, timestamp DESC
+                    LIMIT ?
+                """, (category, limit))
+            else:
+                cursor.execute("""
+                    SELECT * FROM entries
+                    WHERE category = ?
+                    ORDER BY date DESC, timestamp DESC
+                """, (category,))
+
+            rows = cursor.fetchall()
+            return [self._row_to_dict(row) for row in rows]
+
+    def get_entries_by_category_and_date_range(
+        self,
+        category: str,
+        start_date: str,
+        end_date: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Get entries for a specific category within a date range.
+
+        Args:
+            category: Category to filter by
+            start_date: Start date (YYYY-MM-DD)
+            end_date: End date (YYYY-MM-DD)
+
+        Returns:
+            List of entry dictionaries
+        """
+        return self.get_entries_by_date_range(start_date, end_date, category)
+
+    def get_all_entries(
+        self,
+        limit: Optional[int] = None,
+        category: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Get all entries, optionally limited.
+
+        Args:
+            limit: Maximum number of entries to return
+            category: Optional category filter
+
+        Returns:
+            List of entry dictionaries
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            if category:
+                if limit:
+                    cursor.execute("""
+                        SELECT * FROM entries
+                        WHERE category = ?
+                        ORDER BY date DESC, timestamp DESC
+                        LIMIT ?
+                    """, (category, limit))
+                else:
+                    cursor.execute("""
+                        SELECT * FROM entries
+                        WHERE category = ?
+                        ORDER BY date DESC, timestamp DESC
+                    """, (category,))
+            else:
+                if limit:
+                    cursor.execute("""
+                        SELECT * FROM entries
+                        ORDER BY date DESC, timestamp DESC
+                        LIMIT ?
+                    """, (limit,))
+                else:
+                    cursor.execute("""
+                        SELECT * FROM entries
+                        ORDER BY date DESC, timestamp DESC
+                    """)
+
+            rows = cursor.fetchall()
+            return [self._row_to_dict(row) for row in rows]
+
     def get_statistics(
         self,
         start_date: Optional[str] = None,
