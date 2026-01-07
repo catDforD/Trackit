@@ -10,7 +10,7 @@ Author: Trackit Development
 import sqlite3
 import json
 from typing import List, Dict, Any, Optional
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from contextlib import contextmanager
 
 
@@ -186,7 +186,7 @@ class HabitRepository:
         # Parse ISO week to get date range
         year, week = map(int, week_iso.split("-W"))
         start_date = datetime.strptime(f"{year}-{week}-1", "%Y-%W-%w").date()
-        end_date = start_date.replace(day=start_date.day + 6)
+        end_date = start_date + timedelta(days=6)
 
         with self._get_connection() as conn:
             cursor = conn.cursor()

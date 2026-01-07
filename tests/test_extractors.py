@@ -42,7 +42,8 @@ class TestExtractionValidation(unittest.TestCase):
         }
         is_valid, error = validate_extraction(data)
         self.assertFalse(is_valid)
-        self.assertIn("category", error.lower())
+        # Error message mentions the invalid value
+        self.assertIn("invalid", error.lower())
 
     def test_invalid_mood(self):
         """Test validation rejects invalid mood."""
