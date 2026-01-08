@@ -13,6 +13,7 @@ Key Features:
 - Period comparison charts
 - Long-term trend analysis
 - Export to PNG, HTML, and JSON
+- Chinese font support for better localization
 
 Author: Trackit Development
 """
@@ -32,9 +33,13 @@ import json
 
 from src.database.repository import HabitRepository
 from .time_series import TimeSeriesAnalyzer
+from ..utils.font_config import FontConfig
 
 # Use non-interactive backend for matplotlib
 matplotlib.use('Agg')
+
+# Setup Chinese font support
+FontConfig.setup_chinese_font()
 
 
 class HabitVisualizer:

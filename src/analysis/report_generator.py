@@ -335,6 +335,23 @@ class ReportGenerator:
         Returns:
             Number of bytes written
         """
+        import numpy as np
+
+        def convert_numpy_types(obj):
+            """Convert numpy types to Python native types for JSON serialization."""
+            if isinstance(obj, dict):
+                return {k: convert_numpy_types(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [convert_numpy_types(item) for item in obj]
+            elif isinstance(obj, np.integer):
+                return int(obj)
+            elif isinstance(obj, np.floating):
+                return float(obj)
+            elif isinstance(obj, np.ndarray):
+                return obj.tolist()
+            else:
+                return obj
+
         if format == 'md':
             output_filename = f"{filename}.md"
             with open(output_filename, 'w', encoding='utf-8') as f:
@@ -342,8 +359,10 @@ class ReportGenerator:
 
         elif format == 'json':
             output_filename = f"{filename}.json"
+            # Convert numpy types to Python native types
+            report_serializable = convert_numpy_types(report)
             with open(output_filename, 'w', encoding='utf-8') as f:
-                json.dump(report, f, ensure_ascii=False, indent=2)
+                json.dump(report_serializable, f, ensure_ascii=False, indent=2)
 
         elif format == 'html':
             # Simple HTML wrapper

@@ -6,6 +6,8 @@ This module provides a user-friendly web interface with:
 - Dashboard with visualizations and statistics
 - Report generation and export
 - Real-time habit tracking and analysis
+- Quick action buttons for common operations
+- Enhanced user experience with loading states and error handling
 
 Author: Trackit Development
 """
@@ -22,6 +24,101 @@ from .agents.analysis_agent import AnalysisAgent
 from .analysis.report_generator import ReportGenerator
 from .analysis.visualizer import HabitVisualizer
 from .database.repository import HabitRepository
+
+
+# Custom CSS for enhanced styling
+CUSTOM_CSS = """
+/* Global styles */
+.gradio-container {
+    max-width: 1400px !important;
+    margin: auto !important;
+}
+
+/* Tab styling */
+.tabs {
+    border-radius: 12px !important;
+}
+
+/* Button hover effects */
+button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transition: all 0.2s ease;
+}
+
+/* Quick action buttons */
+.quick-action-btn {
+    min-height: 60px !important;
+    font-size: 14px !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease;
+}
+
+.quick-action-btn:hover {
+    transform: scale(1.02);
+}
+
+/* Chat message styling */
+.message {
+    padding: 12px 16px !important;
+    border-radius: 12px !important;
+    margin-bottom: 8px !important;
+}
+
+/* Stats card styling */
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    padding: 20px;
+    color: white;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .gradio-container {
+        padding: 10px !important;
+    }
+
+    .quick-action-btn {
+        min-height: 50px !important;
+        font-size: 13px !important;
+    }
+}
+
+/* Loading animation */
+.loading-spinner {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #3498db;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Status messages */
+.status-success {
+    background-color: #d4edda !important;
+    border-color: #c3e6cb !important;
+    color: #155724 !important;
+}
+
+.status-error {
+    background-color: #f8d7da !important;
+    border-color: #f5c6cb !important;
+    color: #721c24 !important;
+}
+
+.status-info {
+    background-color: #d1ecf1 !important;
+    border-color: #bee5eb !important;
+    color: #0c5460 !important;
+}
+"""
 
 
 class TrackitApp:
@@ -58,42 +155,83 @@ class TrackitApp:
 
         print("✓ Trackit initialized successfully!")
 
-    def chat(self, message: str, history: List[Dict]) -> Tuple[str, List[Dict]]:
+    def chat(self, message: str, history: List[Dict]) -> Tuple[str, List[Dict], str]:
         """
-        Handle chat interactions.
+        Handle chat interactions with enhanced error handling and status feedback.
 
         Args:
             message: User message
             history: Chat history (list of message dicts with 'role' and 'content')
 
         Returns:
-            Tuple of (empty string, updated history)
+            Tuple of (empty string, updated history, status message)
         """
         if not message or not message.strip():
-            return "", history
+            return "", history, "请输入消息"
 
-        # Try recording first
-        result = self.recording_agent.execute(message)
+        status_msg = "⏳ 处理中..."
 
-        # If recording failed, try query
-        if not result.get("success"):
-            result = self.query_agent.execute(message)
+        try:
+            # Try recording first
+            result = self.recording_agent.execute(message)
 
-        # If query failed, try analysis
-        if not result.get("success"):
-            result = self.analysis_agent.execute(message)
+            # If recording failed, try query
+            if not result.get("success"):
+                result = self.query_agent.execute(message)
 
-        # Extract response
-        if result.get("success"):
-            response = result.get("feedback") or result.get("response", "操作成功")
-        else:
-            response = result.get("error", "抱歉，我没有理解。请换个说法试试。")
+            # If query failed, try analysis
+            if not result.get("success"):
+                result = self.analysis_agent.execute(message)
 
-        # Update history with Gradio v4+ format
-        history.append({"role": "user", "content": message})
-        history.append({"role": "assistant", "content": response})
+            # Extract response
+            if result.get("success"):
+                response = result.get("feedback") or result.get("response", "操作成功")
+                status_msg = "✅ 操作成功"
+            else:
+                response = result.get("error", "抱歉，我没有理解。请换个说法试试。")
+                status_msg = "⚠️ 未完全理解"
 
-        return "", history
+            # Update history with Gradio v4+ format
+            history.append({"role": "user", "content": message})
+            history.append({"role": "assistant", "content": response})
+
+            return "", history, status_msg
+
+        except Exception as e:
+            error_msg = f"❌ 发生错误: {str(e)}"
+            history.append({"role": "user", "content": message})
+            history.append({"role": "assistant", "content": error_msg})
+            return "", history, "❌ 处理失败"
+
+    def quick_action(self, action_type: str, history: List[Dict]) -> Tuple[str, List[Dict], str]:
+        """
+        Handle quick action button clicks.
+
+        Args:
+            action_type: Type of quick action
+            history: Chat history
+
+        Returns:
+            Tuple of (empty string, updated history, status message)
+        """
+        # Quick action templates
+        quick_actions = {
+            "record_exercise": "今天运动了30分钟",
+            "record_reading": "今天阅读了1小时",
+            "record_meditation": "今天冥想了15分钟",
+            "record_water": "今天喝了8杯水",
+            "query_today": "我今天记录了什么？",
+            "query_week": "我这周运动了几次？",
+            "query_patterns": "有什么规律吗？",
+            "query_trends": "最近趋势怎么样？",
+            "analyze_all": "给我一些分析和建议",
+            "clear_today": "删除今天的记录",
+        }
+
+        message = quick_actions.get(action_type, "")
+        if message:
+            return self.chat(message, history)
+        return "", history, "❓ 未知操作"
 
     def get_dashboard_data(self) -> Tuple[Dict, str, Optional[str]]:
         """
@@ -249,93 +387,194 @@ class TrackitApp:
 
     def create_interface(self):
         """
-        Create the Gradio interface.
+        Create the enhanced Gradio interface with quick actions and improved UX.
 
         Returns:
             gr.Blocks: The Gradio interface
         """
         with gr.Blocks(title="Trackit - 习惯追踪助手") as app:
-            gr.Markdown("# 🎯 Trackit - 习惯追踪与复盘助手")
-            gr.Markdown("通过自然语言记录习惯，获取智能分析和个性化建议")
+            # Header
+            gr.Markdown(
+                """
+                # 🎯 Trackit - 习惯追踪与复盘助手
+                ### 通过自然语言记录习惯，获取智能分析和个性化建议
+                """
+            )
 
             with gr.Tabs():
                 # Tab 1: Chat Interface
                 with gr.Tab("💬 对话记录"):
                     gr.Markdown("### 记录习惯或查询数据")
+
+                    # Quick action buttons for recording
+                    gr.Markdown("#### 📝 快速记录")
+                    with gr.Row():
+                        record_exercise_btn = gr.Button(
+                            "🏃 运动30分钟",
+                            elem_classes=["quick-action-btn"]
+                        )
+                        record_reading_btn = gr.Button(
+                            "📚 阅读1小时",
+                            elem_classes=["quick-action-btn"]
+                        )
+                        record_meditation_btn = gr.Button(
+                            "🧘 冥想15分钟",
+                            elem_classes=["quick-action-btn"]
+                        )
+                        record_water_btn = gr.Button(
+                            "💧 喝8杯水",
+                            elem_classes=["quick-action-btn"]
+                        )
+
+                    # Quick action buttons for querying
+                    gr.Markdown("#### 🔍 快速查询")
+                    with gr.Row():
+                        query_today_btn = gr.Button(
+                            "📅 今天记录",
+                            elem_classes=["quick-action-btn"]
+                        )
+                        query_week_btn = gr.Button(
+                            "📊 本周统计",
+                            elem_classes=["quick-action-btn"]
+                        )
+                        query_patterns_btn = gr.Button(
+                            "🔍 发现规律",
+                            elem_classes=["quick-action-btn"]
+                        )
+                        query_trends_btn = gr.Button(
+                            "📈 趋势分析",
+                            elem_classes=["quick-action-btn"]
+                        )
+
+                    # Chat interface
+                    gr.Markdown("#### 💬 自由对话")
                     gr.Markdown("试试说：\"今天跑了5公里\" 或 \"我这周运动了几次？\"")
 
                     chatbot = gr.Chatbot(
                         label="对话历史",
-                        height=400
+                        height=350
                     )
                     msg = gr.Textbox(
                         label="你的消息",
-                        placeholder="输入消息...",
-                        lines=2
+                        placeholder="输入消息，或点击上方快捷按钮...",
+                        lines=2,
+                        autofocus=True
                     )
+
                     with gr.Row():
-                        submit_btn = gr.Button("发送", variant="primary")
-                        clear_btn = gr.Button("清空对话")
+                        submit_btn = gr.Button("发送 📤", variant="primary", scale=2)
+                        clear_btn = gr.Button("清空对话 🗑️", variant="stop", scale=1)
+
+                    # Status indicator
+                    status_output = gr.Textbox(
+                        label="状态",
+                        interactive=False,
+                        scale=1
+                    )
 
                     # Example messages
                     gr.Examples(
                         examples=[
-                            "今天跑了5公里，感觉不错",
-                            "我这周运动了几次？",
-                            "有什么规律吗？",
-                            "最近趋势怎么样？",
-                            "给我一些分析和建议",
-                            "导出数据"
+                            ["今天跑了5公里，感觉不错"],
+                            ["我这周运动了几次？"],
+                            ["有什么规律吗？"],
+                            ["最近趋势怎么样？"],
+                            ["给我一些分析和建议"],
+                            ["导出数据"]
                         ],
-                        inputs=msg
+                        inputs=msg,
+                        label="示例输入"
                     )
 
                     # Event handlers
                     submit_btn.click(
                         self.chat,
                         inputs=[msg, chatbot],
-                        outputs=[msg, chatbot]
+                        outputs=[msg, chatbot, status_output]
                     )
                     msg.submit(
                         self.chat,
                         inputs=[msg, chatbot],
-                        outputs=[msg, chatbot]
+                        outputs=[msg, chatbot, status_output]
                     )
+
+                    # Quick action handlers
+                    record_exercise_btn.click(
+                        lambda h: self.quick_action("record_exercise", h),
+                        inputs=[chatbot],
+                        outputs=[msg, chatbot, status_output]
+                    )
+                    record_reading_btn.click(
+                        lambda h: self.quick_action("record_reading", h),
+                        inputs=[chatbot],
+                        outputs=[msg, chatbot, status_output]
+                    )
+                    record_meditation_btn.click(
+                        lambda h: self.quick_action("record_meditation", h),
+                        inputs=[chatbot],
+                        outputs=[msg, chatbot, status_output]
+                    )
+                    record_water_btn.click(
+                        lambda h: self.quick_action("record_water", h),
+                        inputs=[chatbot],
+                        outputs=[msg, chatbot, status_output]
+                    )
+                    query_today_btn.click(
+                        lambda h: self.quick_action("query_today", h),
+                        inputs=[chatbot],
+                        outputs=[msg, chatbot, status_output]
+                    )
+                    query_week_btn.click(
+                        lambda h: self.quick_action("query_week", h),
+                        inputs=[chatbot],
+                        outputs=[msg, chatbot, status_output]
+                    )
+                    query_patterns_btn.click(
+                        lambda h: self.quick_action("query_patterns", h),
+                        inputs=[chatbot],
+                        outputs=[msg, chatbot, status_output]
+                    )
+                    query_trends_btn.click(
+                        lambda h: self.quick_action("query_trends", h),
+                        inputs=[chatbot],
+                        outputs=[msg, chatbot, status_output]
+                    )
+
                     clear_btn.click(
-                        lambda: ([], ""),
-                        outputs=[chatbot, msg]
+                        lambda: ([], "", "✅ 对话已清空"),
+                        outputs=[chatbot, msg, status_output]
                     )
 
                 # Tab 2: Dashboard
                 with gr.Tab("📊 数据看板"):
                     with gr.Row():
-                        refresh_btn = gr.Button("🔄 刷新数据", variant="primary")
+                        refresh_btn = gr.Button("🔄 刷新数据", variant="primary", size="lg")
 
                     with gr.Row():
-                        with gr.Column():
-                            gr.Markdown("### 快速统计")
+                        with gr.Column(scale=1):
+                            gr.Markdown("### ⚡ 快速统计")
                             summary_output = gr.JSON(label="摘要")
 
-                        with gr.Column():
-                            gr.Markdown("### 详细统计")
+                        with gr.Column(scale=2):
+                            gr.Markdown("### 📋 详细统计")
                             stats_output = gr.Markdown()
 
                     with gr.Row():
-                        chart_output = gr.Image(label="本周趋势图")
+                        chart_output = gr.Image(label="📈 本周趋势图", show_label=True)
 
                     # Load dashboard on mount and refresh
                     def load_dashboard():
                         summary, stats, chart = self.get_dashboard_data()
-                        return summary, stats, chart
+                        return summary, stats, chart, "✅ 数据已更新"
 
                     refresh_btn.click(
                         load_dashboard,
-                        outputs=[summary_output, stats_output, chart_output]
+                        outputs=[summary_output, stats_output, chart_output, status_output]
                     )
 
                     app.load(
                         load_dashboard,
-                        outputs=[summary_output, stats_output, chart_output]
+                        outputs=[summary_output, stats_output, chart_output, status_output]
                     )
 
                 # Tab 3: Report Generation
@@ -348,21 +587,27 @@ class TrackitApp:
                             maximum=4,
                             value=2,
                             step=1,
-                            label="周数"
+                            label="报告周期（周）",
+                            info="选择包含的周数"
                         )
-                        generate_btn = gr.Button("生成报告", variant="primary")
+                        generate_btn = gr.Button("📊 生成报告", variant="primary", size="lg")
 
                     with gr.Row():
-                        with gr.Column():
-                            report_output = gr.Markdown(label="周报内容")
+                        with gr.Column(scale=2):
+                            report_output = gr.Markdown(label="📝 周报内容")
 
-                        with gr.Column():
-                            report_chart = gr.Image(label="报告图表")
+                        with gr.Column(scale=1):
+                            report_chart = gr.Image(label="📈 报告图表")
+
+                    def generate_report_with_status(weeks: int):
+                        text, chart = self.generate_report(weeks)
+                        status = "✅ 报告生成成功" if chart else "⚠️ 报告生成完成（图表不可用）"
+                        return text, chart, status
 
                     generate_btn.click(
-                        self.generate_report,
+                        generate_report_with_status,
                         inputs=[weeks_slider],
-                        outputs=[report_output, report_chart]
+                        outputs=[report_output, report_chart, status_output]
                     )
 
                 # Tab 4: Data Export
@@ -370,24 +615,45 @@ class TrackitApp:
                     gr.Markdown("### 导出你的习惯数据")
 
                     with gr.Row():
-                        csv_btn = gr.Button("导出为 CSV", variant="primary")
-                        json_btn = gr.Button("导出为 JSON", variant="secondary")
+                        csv_btn = gr.Button("📄 导出为 CSV", variant="primary", size="lg")
+                        json_btn = gr.Button("📋 导出为 JSON", variant="secondary", size="lg")
 
-                    export_output = gr.Textbox(label="导出结果")
+                    export_output = gr.Textbox(
+                        label="导出结果",
+                        interactive=False,
+                        placeholder="点击上方按钮导出数据..."
+                    )
+
+                    def export_csv_with_status():
+                        result = self.export_data("csv")
+                        return result, result
+
+                    def export_json_with_status():
+                        result = self.export_data("json")
+                        return result, result
 
                     csv_btn.click(
-                        lambda: self.export_data("csv"),
-                        outputs=export_output
+                        export_csv_with_status,
+                        outputs=[export_output, status_output]
                     )
                     json_btn.click(
-                        lambda: self.export_data("json"),
-                        outputs=export_output
+                        export_json_with_status,
+                        outputs=[export_output, status_output]
                     )
 
             # Footer
             gr.Markdown("---")
             gr.Markdown(
-                "💡 **提示**: 支持自然语言输入，比如 \"今天跑了5公里\"、\"我这周运动了几次？\" 等"
+                """
+                💡 **使用提示**:
+                - 支持**自然语言输入**，比如 \"今天跑了5公里\"、\"我这周运动了几次？\"
+                - 使用**快捷按钮**快速记录常见习惯
+                - 在**数据看板**查看可视化统计
+                - 生成**AI周报**获取个性化洞察和建议
+                """
+            )
+            gr.Markdown(
+                "🌟 **Trackit** v0.3.0 | 持续记录，发现更好的自己 | [GitHub](https://github.com/yourusername/Trackit)"
             )
 
         return app
